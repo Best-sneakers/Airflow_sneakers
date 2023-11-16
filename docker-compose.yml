@@ -1,0 +1,121 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./Dockerfiles/parser/Dockerfile
+      target: development
+    command: [ "python"  , "-m", "app" ]
+    environment:
+      DEBUG: 'True'
+      POSTGRES_HOST: postgres
+      SETTINGS_LOG_FILE: True
+    volumes:
+      - "./app:/src/app"
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD" ,"nc", "-vz", "-w1", "localhost", "8000" ]
+      interval: 5s
+      timeout: 20s
+      retries: 100
+    restart: on-failure
+
+  worker:
+    build:
+      context: .
+      dockerfile: ./Dockerfiles/parser/Dockerfile
+      target: development
+    command: celery -A app.services.celery worker --uid=nobody --gid=nogroup --loglevel=info
+    healthcheck:
+      test: celery -A app.celery_app status
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - ./app:/src/app
+    environment:
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+
+  chrome:
+    image: selenium/standalone-chrome:latest
+    hostname: chrome
+    ports:
+      - "5900:5900"
+      - "4444:4444"
+    privileged: true
+    shm_size: 2g
+    restart: on-failure
+
+  postgres:
+    image: postgres:14.0-alpine
+    volumes:
+      - postgres:/var/lib/postgresql/data/
+      - ./Configs/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_NAME}
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "$DB_USER" ]
+      interval: 5s
+      retries: 5
+    restart: on-failure
+
+  redis:
+    image: redis:latest
+    expose:
+      - 6379
+    volumes:
+      - "redis_data:/bitnami/redis/data"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    restart: on-failure
+
+  rabbitmq:
+    container_name: "rabbitmq"
+    image: rabbitmq:3.12-management-alpine
+    volumes:
+      - "rabbitmq_data:/bitnami"
+    environment:
+      RABBITMQ_DEFAULT_USER: parser
+      RABBITMQ_DEFAULT_PASS: parser
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    restart: on-failure
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+
+volumes:
+  postgres:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  redis_data:
+    driver: local

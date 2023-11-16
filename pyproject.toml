@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "parser"
+version = "0.1.0"
+description = ""
+authors = ["DK Best team "]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+psycopg2-binary = "^2.9.9"
+python-dotenv = "^1.0.0"
+fastapi = "^0.104.1"
+orjson = "^3.9.10"
+ecs-logging = "^2.1.0"
+uvicorn = "^0.24.0.post1"
+pydantic-settings = "^2.0.3"
+selenium = "^4.15.2"
+bs4 = "^0.0.1"
+celery = "^5.3.5"
+redis = "^5.0.1"
+
+[tool.poetry.dev-dependencies]
+mypy = "^1.7.0"
+flake8 = "^6.1.0"
+black = {extras = ["jupyter"], version = "^23.11.0"}
+
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.tox
+  | venv
+  | build
+  | dist
+)/
+'''
+
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
