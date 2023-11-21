@@ -1,14 +1,36 @@
-# Sneakers  project initial repository  
-This repository serves as MVP  repo where we collect neaded data 
+# Sneakers  project initial repository
 
-Firstly, we created a parser sheakers data(images and labels) from Farfetch marketplace.
+Our first test parser : [Farfetch test parser](https://github.com/Best-sneakers/parser/research/test_parser)
 
-Examples of sneaker photos
+## FastApi + Celery async  parser .
 
-1)
+- As for now project can run from the container,
 
-![image](https://github.com/Best-sneakers/parser/assets/146220094/3ff13845-fb81-4722-9c7b-a7097d2d652f)
+## Minimum Requirements
 
-2) 
+This project supports Ubuntu Linux 18.04 It is not tested or supported for the Windows OS.
 
-![image](https://github.com/Best-sneakers/parser/assets/146220094/19a57a1b-8294-4849-98d9-b1812afbcb5e)
+- [Docker 20.10 +](https://docs.docker.com/)
+- [docker-compose  1.29.2 + ](https://docs.docker.com/compose/)
+
+# Firstly you must build docker images running
+
+```bash
+$ make build
+```
+
+# You can start Fastapi server by runing .
+
+```bash
+$ docker compose up
+```
+
+# Or locally
+
+```bash
+$  python -m app
+```
+
+
+
+
