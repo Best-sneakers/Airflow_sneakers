@@ -1,7 +1,7 @@
 __all__ = "LOGGING"
 from pathlib import Path
 
-log_dir = Path(__file__).parent.parent.parent / 'logs'
+log_dir = Path(__file__).parent.parent.parent / "logs"
 
 LOGGING = {
     "version": 1,
@@ -53,12 +53,12 @@ LOGGING = {
             "propagate": False,
         },
         "uvicorn.error": {
-            "handlers": ["uvicorn-default", 'console'],
+            "handlers": ["uvicorn-default", "console"],
             "level": "INFO",
             "propagate": False,
         },
         "uvicorn.access": {
-            "handlers": ["uvicorn-access", 'console'],
+            "handlers": ["uvicorn-access", "console"],
             "level": "INFO",
             "propagate": False,
         },

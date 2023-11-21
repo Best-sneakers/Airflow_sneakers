@@ -1,9 +1,10 @@
-from fastapi import FastAPI
-from fastapi.responses import ORJSONResponse
 from logging import config as logging_config
 
+from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
+
 from app.settings.logger import LOGGING
-from app.settings.settings import get_settings, ProjectSettings, settings
+from app.settings.settings import ProjectSettings, get_settings, settings
 
 app = FastAPI(
     title=settings.project.project_name,

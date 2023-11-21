@@ -6,11 +6,18 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings
 
 
+class Celery(BaseSettings):
+    class Config:
+        env_prefix = "CELERY_"
+
+    max_loop_interval: str = "60"
+
+
 class Redis(BaseSettings):
     class Config:
         env_prefix = "REDIS_"
 
-    host: str = 'localhost'
+    host: str = "localhost"
     port: int = 6379
     db: int = 1
 
@@ -19,20 +26,20 @@ class RabbitMQ(BaseSettings):
     class Config:
         env_prefix = "RABBITMQ_"
 
-    host: str = 'localhost'
+    host: str = "localhost"
     port: int = 5672
-    username: str = 'parser'
-    password: str = 'parser'
+    username: str = "parser"
+    password: str = "parser"
 
 
 class DB(BaseSettings):
     class Config:
         env_prefix = "POSTGRES_"
 
-    name: str = 'parser'
-    user: str = 'postgres'
-    password: str = 'password'
-    host: str = 'localhost'
+    db: str = "parser"
+    user: str = "postgres"
+    password: str = "password"
+    host: str = "localhost"
     port: int = 5432
 
 
@@ -62,6 +69,7 @@ class Settings(BaseSettings):
     api: UvicornURL = UvicornURL()
     project: ProjectSettings = ProjectSettings()
     redis: Redis = Redis()
+    celery: Celery = Celery()
     rabbit: RabbitMQ = RabbitMQ()
 
 

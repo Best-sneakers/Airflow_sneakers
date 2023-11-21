@@ -23,6 +23,8 @@ redis = "^5.0.1"
 mypy = "^1.7.0"
 flake8 = "^6.1.0"
 black = {extras = ["jupyter"], version = "^23.11.0"}
+jupyter = "^1.0.0"
+
 
 
 
