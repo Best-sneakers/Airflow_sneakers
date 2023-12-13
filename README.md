@@ -5,31 +5,69 @@ Our first test parser : [Farfetch test parser](https://github.com/Best-sneakers/
 
 - As for now project can run from the container,
 
-## Minimum Requirements
 
-This project supports Ubuntu Linux 18.04 It is not tested or supported for the Windows OS.
+## Application Launch
 
-- [Docker 20.10 +](https://docs.docker.com/)
-- [docker-compose  1.29.2 + ](https://docs.docker.com/compose/)
+### Development
 
-# Firstly you must build docker images running
+To launch the application in the development environment,
+there are options to run it directly using python and through 
+docker-compose. Both options use environment variables for configuration, 
+which are described in the app/settings/settings.py file. 
+In these run modes, it's possible to update the application code on the fly without restarting 
+(except when adding new dependencies).
 
-```bash
-$ make build
-```
 
-# You can start Fastapi server by runing .
-
-```bash
-$ docker compose up
-```
-
-# Or locally
+#### Python Runner
 
 ```bash
-$  python -m app
+python -m app
+```
+
+#### Docker runner
+
+```bash
+docker compose up -d
+```
+
+```bash
+make build
+```
+This command will create a .env file from .env.example and build the containers.
+
+#### Project linting:
+
+```bash
+make lint
 ```
 
 
+### Before You Begin
 
+
+```bash
+make dev
+```
+
+This command to set up pre commit config in order to check your code before commit 
+
+### Dependency's
+
+Dependency management is handled by the poetry utility. 
+The list of dependencies is in the pyproject.toml file. 
+Instructions for setting up a poetry environment for PyCharm can be found here.
+To add a dependency, simply write poetry add requests,
+and the utility will automatically choose a version that does not conflict with current dependencies. 
+Dependencies with exact versions are recorded in the poetry.lock file. To get a dependency tree, you can use the command poetry show --tree. 
+Other commands are available in the official documentation for the utility.
+
+
+### Testing 
+
+Tests are designed as a completely independent solution. Tests require. 
+To run the tests, use the following command in the project root:
+
+```bash
+make tests
+```
 

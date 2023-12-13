@@ -1,10 +1,26 @@
+.PHONY: dev pre-commit isort black mypy flake8 pylint lint
+
+dev: pre-commit
+
+pre-commit:
+	pre-commit install
+	pre-commit autoupdate
+
 isort:
-	isort
+	isort . --profile black
+
+flake8:
+	flake8 .
 
 black:
 	black .
 
-lint: isort black
+mypy:
+	mypy -p app
+
+pylint:
+	pylint app
+
 
 check_and_rename_env:
 	  @if [ -e ".env" ]; then \
@@ -18,3 +34,6 @@ build: check_and_rename_env
 	docker compose build
 	@echo "Waiting for 15 seconds..."
 	@sleep 15
+
+lint: isort black mypy  pylint flake8
+

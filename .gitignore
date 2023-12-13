@@ -162,3 +162,7 @@ cython_debug/
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/vcs.xml
 /poetry.lock
+/.idea/.gitignore
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/parser.iml
