@@ -1,0 +1,62 @@
+name: MVP sneakers Git CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        python-version: [ 3.10.6 ]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint mypy lxml pylint-report flake8-html
+          poetry install --no-root
+
+      - name: Create directories
+        run: |
+          mkdir -p reports/app/flake8/
+          mkdir -p reports/app/pylint/
+          mkdir -p reports/app/mypy/
+
+      - name: Check typing with mypy
+        run: |
+          mypy --html-report reports/app/mypy/ ./app || true
+
+      - name: Lint with flake8
+        run: |
+          flake8 app || flake8 app  --format=html --htmldir=reports/app/flake8/
+
+      - name: Lint with pylint
+        run: |
+          pylint app || pylint app --output-format=pylint_report.CustomJsonReporter --load-plugins = "pylint_report"  | pylint_report > reports/app/pylint/report.html | false
+
+
+      - name: Upload reports
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: html_reports
+          path: reports/

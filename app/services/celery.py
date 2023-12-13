@@ -1,4 +1,4 @@
-__all__ = 'celery'
+__all__ = "celery"
 
 from celery import Celery
 
