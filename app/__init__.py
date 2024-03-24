@@ -3,6 +3,7 @@ from logging import config as logging_config
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
+from app.api.v1 import eda_api
 from app.settings.logger import LOGGING
 from app.settings.settings import settings
 
@@ -23,3 +24,6 @@ async def root():
 async def startup():
     if settings.project.log_file:
         logging_config.dictConfig(LOGGING)
+
+
+app.include_router(eda_api.router, prefix="/api/v1", tags=["sneakers"])
