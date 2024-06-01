@@ -32,26 +32,21 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint mypy lxml pylint-report flake8-html
+          pip install pylint  lxml pylint-report flake8-html
           poetry install --no-root
 
       - name: Create directories
         run: |
-          mkdir -p reports/app/flake8/
-          mkdir -p reports/app/pylint/
-          mkdir -p reports/app/mypy/
-
-      - name: Check typing with mypy
-        run: |
-          mypy --html-report reports/app/mypy/ ./app || true
+          mkdir -p reports/dags/flake8/
+          mkdir -p reports/dags/pylint/
 
       - name: Lint with flake8
         run: |
-          flake8 app || flake8 app  --format=html --htmldir=reports/app/flake8/
+          flake8 dags || flake8 dags  --format=html --htmldir=reports/dags/flake8/
 
       - name: Lint with pylint
         run: |
-          pylint app || pylint app --output-format=pylint_report.CustomJsonReporter --load-plugins = "pylint_report"  | pylint_report > reports/app/pylint/report.html | false
+          pylint dags || pylint dags --output-format=pylint_report.CustomJsonReporter --load-plugins = "pylint_report"  | pylint_report > reports/dags/pylint/report.html | false
 
 
       - name: Upload reports
