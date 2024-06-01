@@ -1,77 +1,41 @@
+x-airflow-common:
+  &airflow-common
+  build: dockerfiles/airflow
+  env_file:
+    - ./.env
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+  networks:
+    - airflow_network
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - airflow_logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
 services:
-  web:
-    build:
-      context: .
-      dockerfile: ./Dockerfiles/parser/Dockerfile
-      target: development
-    command: [ "python"  , "-m", "app" ]
-    environment:
-      DEBUG: 'True'
-      POSTGRES_HOST: postgres
-      SETTINGS_LOG_FILE: 'True'
-    volumes:
-      - "./app:/src/app"
-    ports:
-      - "127.0.0.1:8000:8000"
-    env_file:
-      - ./.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD" ,"nc", "-vz", "-w1", "localhost", "8000" ]
-      interval: 5s
-      timeout: 20s
-      retries: 100
-    restart: on-failure
-
-  worker:
-    build:
-      context: .
-      dockerfile: ./Dockerfiles/parser/Dockerfile
-      target: development
-    command: celery -A app.services.celery worker --uid=nobody --gid=nogroup --loglevel=info
-    volumes:
-      - ./app:/src/app
-    environment:
-      REDIS_HOST: redis
-      RABBITMQ_HOST: rabbitmq
-    depends_on:
-      web:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-
-  chrome:
-    image: selenium/standalone-chrome:latest
-    hostname: chrome
-    ports:
-      - "5900:5900"
-      - "4444:4444"
-    privileged: true
-    shm_size: 2g
-    restart: on-failure
-
   postgres:
-    image: postgres:14.0-alpine
-    volumes:
-      - postgres:/var/lib/postgresql/data/
-      - ./Configs/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    image: postgres:13
     env_file:
       - ./.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - 5432:5432
+      POSTGRES_MULTIPLE_DATABASES: airflow, mlflow
+    networks:
+      - airflow_network
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./scripts/postgres_init_script:/docker-entrypoint-initdb.d
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "$POSTGRES_USER",'-d','$POSTGRES_DB']
+      test: [ "CMD", "pg_isready", "-U", "airflow" ]
       interval: 5s
       retries: 5
     restart: on-failure
@@ -80,8 +44,8 @@ services:
     image: redis:latest
     expose:
       - 6379
-    volumes:
-      - "redis_data:/bitnami/redis/data"
+    networks:
+      - airflow_network
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
@@ -89,28 +53,122 @@ services:
       retries: 50
     restart: on-failure
 
-  rabbitmq:
-    container_name: "rabbitmq"
-    image: rabbitmq:3.12-management-alpine
-    volumes:
-      - "rabbitmq_data:/bitnami"
+  chrome:
+    image: selenium/standalone-chrome:latest
+    hostname: chrome
     environment:
-      RABBITMQ_DEFAULT_USER: parser
-      RABBITMQ_DEFAULT_PASS: parser
-    healthcheck:
-      test: rabbitmq-diagnostics -q ping
-      interval: 30s
-      timeout: 30s
-      retries: 3
-    restart: on-failure
+      SE_SESSION_REQUEST_TIMEOUT: 600
+    networks:
+      - airflow_network
     ports:
-      - '5672:5672'
-      - '15672:15672'
+      - "5900:5900"
+      - "4444:4444"
+    privileged: true
+    shm_size: 8g
+    restart: on-failure
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - 8080:8080
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: on-failure
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: [ "CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"' ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: on-failure
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    environment:
+      <<: *airflow-common-env
+      DUMB_INIT_SETSID: "0"
+    restart: on-failure
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: [ "CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"' ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: on-failure
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow_version=$$(AIRFLOW__LOGGING__LOGGING_LEVEL=INFO && gosu airflow airflow version)
+        mkdir -p /sources /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{dags,plugins}
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    user: "0:0"
+    volumes:
+      - .:/sources
+
+  airflow-jupyter:
+    <<: *airflow-common
+    container_name: airflow_jupyter_y
+    command: bash -cx "jupyter notebook --ip 0.0.0.0
+      --NotebookApp.token='airflow' --no-browser --allow-root"
+    ports:
+      - 8888:8888
+    restart: on-failure
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
 
 volumes:
-  postgres:
-    driver: local
-  rabbitmq_data:
-    driver: local
-  redis_data:
-    driver: local
+  postgres-db-volume:
+  airflow_logs:
+
+networks:
+  airflow_network:
+    name: airflow_network
+    driver: bridge

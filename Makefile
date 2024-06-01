@@ -1,26 +1,13 @@
-.PHONY: dev pre-commit isort black mypy flake8 pylint lint
-
-dev: pre-commit
-
-pre-commit:
-	pre-commit install
-	pre-commit autoupdate
-
 isort:
-	isort . --profile black
+	isort dags
 
 flake8:
-	flake8 .
-
-black:
-	black .
-
-mypy:
-	mypy -p app
+	flake8 dags
 
 pylint:
-	pylint app
+	pylint dags
 
+lint: isort flake8 pylint
 
 check_and_rename_env:
 	  @if [ -e ".env" ]; then \
@@ -35,5 +22,18 @@ build: check_and_rename_env
 	@echo "Waiting for 15 seconds..."
 	@sleep 15
 
-lint: isort black mypy  pylint flake8
+
+init: build
+	docker compose up airflow-init
+
+run_local_s3:
+	docker compose -f docker-compose.s3.yaml up -d
+stop_local_s3:
+	docker compose -f docker-compose.s3.yaml down
+
+run:
+	docker compose up -d
+
+stop:
+	docker compose down --remove-orphans
 
